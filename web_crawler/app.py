@@ -63,13 +63,9 @@ def find_feature_pricing_urls(base_url):
 def append_to_csv(input_url, features_url, pricing_url, status, filename):
     """Append crawl data to the specified CSV file."""
     try:
-        if not os.path.exists(filename):
-            # If the file does not exist, create it with headers
-            pd.DataFrame(columns=["Input URL", "Features URL", "Pricing URL", "Status"]).to_csv(filename, index=False)
-        
-        # Read the existing CSV file
-        df = pd.read_csv(filename)
-        
+        # Create or append to the CSV file directly
+        df = pd.DataFrame(columns=["Input URL", "Features URL", "Pricing URL", "Status"]) if not os.path.exists(filename) else pd.read_csv(filename)
+
         # Create a new row to append
         new_row = {"Input URL": input_url, "Features URL": features_url, "Pricing URL": pricing_url, "Status": status}
         
@@ -86,24 +82,39 @@ def append_to_csv(input_url, features_url, pricing_url, status, filename):
 # Streamlit interface
 st.title("Automated Features and Pricing Crawler")
 
-# Get the previously used file name
+# Get the previously used file names
 previous_files = [f for f in os.listdir() if f.endswith(".csv")]
 
-# Display the previous file names and the current file name
-previous_file = st.selectbox("Select a previous file or enter a new file name:", options=[""] + previous_files)
+# Display files in row-wise format with view and delete options
+if previous_files:
+    st.subheader("Manage Previous Files:")
+    for file in previous_files:
+        col1, col2 = st.columns([3, 1])  # Columns for "View" and "Delete" buttons
 
-# Add option to remove the selected file
-remove_file = st.button("Remove Selected Previous File")
+        # View button to show the file content
+        with col1:
+            if st.button(f"View {file}", key=f"view_{file}"):
+                try:
+                    data = pd.read_csv(file)
+                    st.write(f"Contents of {file}:")
+                    st.dataframe(data)
+                except Exception as e:
+                    st.error(f"Error reading file '{file}': {e}")
 
-if remove_file and previous_file:
-    try:
-        os.remove(previous_file)  # Delete the selected file
-        st.success(f"{previous_file} has been removed.")
-        previous_files.remove(previous_file)  # Remove from the displayed list
-    except Exception as e:
-        st.error(f"Error removing file: {e}")
+        # Delete button to remove the file
+        with col2:
+            if st.button(f"Delete", key=f"delete_{file}"):
+                try:
+                    os.remove(file)
+                    st.success(f"File '{file}' has been deleted.")
+                    st.experimental_rerun()  # Refresh the app to update the file list
+                except Exception as e:
+                    st.error(f"Error deleting file '{file}': {e}")
+else:
+    st.info("No previous files found.")
 
-current_file = st.text_input("Enter the current output file name:", value=previous_file if previous_file else "data/features_pricing_crawler_data.csv")
+# Input for current output file name
+current_file = st.text_input("Enter the current output file name:", value="features_pricing_crawler_data.csv")
 
 input_url = st.text_input("Enter the website URL:")
 if st.button("Start Crawling"):
@@ -113,7 +124,7 @@ if st.button("Start Crawling"):
 
             urls = find_feature_pricing_urls(input_url)
             status = "Success" if urls else "No URLs Found"
-            
+
             append_to_csv(
                 input_url,
                 urls.get("features", "Not Found"),
