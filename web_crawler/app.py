@@ -125,9 +125,8 @@ if st.button("Start Crawling"):
             if urls:
                 st.write("Crawling complete. Results saved to:", current_file)
                 # Display the crawled data on the tool interface
-                if os.path.exists(current_file):
-                    display_df = pd.read_csv(current_file)
-                    st.write(display_df)
+                display_df = pd.read_csv(current_file)
+                st.write(display_df)
             else:
                 st.error("No 'features' or 'pricing' URLs found on the page.")
         else:
